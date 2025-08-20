@@ -2,7 +2,7 @@
 Enhancing Retail Investor Education and Engagement
 
 ## Backend setup:
-0. Go to backend/NL2SQL dir.
+0. Go to SEBI-HACKATHON-2025 dir.
 1. make .env file from .env.backup file. Set GEMINI_API_KEY env var.
 2. create python virtual environment
 ```sh
