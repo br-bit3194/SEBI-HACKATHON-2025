@@ -256,7 +256,7 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
                 child: _buildInfoItem('52W Low', '₹${(widget.stock.currentPrice * 0.8).toStringAsFixed(2)}'),
               ),
               Expanded(
-                child: _buildInfoItem('P/E Ratio', '${(widget.stock.currentPrice / 100).toStringAsFixed(1)}'),
+                child: _buildInfoItem('P/E Ratio', (widget.stock.currentPrice / 100).toStringAsFixed(1)),
               ),
             ],
           ),
