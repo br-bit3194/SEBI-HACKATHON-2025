@@ -8,12 +8,18 @@ from pydantic import BaseModel
 
 # Route to handle file upload and trigger analysis pipeline
 from .agents.chat import get_chat_agent
+
+# Import trading routes
+from .trading_routes import trading_router
  
 # get the logger
 logger = LoggerSingleton.get_instance()
 
 # init api router
 api_router = APIRouter()
+
+# Include trading routes
+api_router.include_router(trading_router)
 
 class SearchRequst(BaseModel):
     question: str

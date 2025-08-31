@@ -122,7 +122,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'question'.tr() + ' ${currentQuestionIndex + 1}/${widget.quiz.questions.length}',
+                '${'question'.tr()} ${currentQuestionIndex + 1}/${widget.quiz.questions.length}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,

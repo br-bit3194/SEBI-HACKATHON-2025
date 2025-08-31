@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../providers/app_state_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../services/api_service.dart';
 import 'stock_detail_screen.dart';
 
 class VirtualTradingScreen extends StatefulWidget {
@@ -22,13 +23,39 @@ class _VirtualTradingScreenState extends State<VirtualTradingScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _initializeStocks();
+    _loadMarketData();
   }
 
-  void _initializeStocks() {
+  Future<void> _loadMarketData() async {
+    try {
+      final appState = Provider.of<AppStateProvider>(context, listen: false);
+      await appState.refreshMarketData();
+      
+      // Load market data from backend
+      final marketData = await ApiService.getMarketData();
+      setState(() {
+        stocks = marketData.map((data) => Stock(
+          symbol: data['symbol'] ?? '',
+          name: data['name'] ?? '',
+          currentPrice: data['current_price']?.toDouble() ?? 0.0,
+          change: data['change']?.toDouble() ?? 0.0,
+          changePercent: data['change_percent']?.toDouble() ?? 0.0,
+          volume: data['volume']?.toInt() ?? 0,
+          marketCap: data['market_cap']?.toDouble() ?? 0.0,
+          sector: data['sector'] ?? '',
+        )).toList();
+      });
+    } catch (e) {
+      print('Error loading market data: $e');
+      // Fallback to static data if backend fails
+      _initializeStaticStocks();
+    }
+  }
+
+  void _initializeStaticStocks() {
     stocks = [
       Stock(
-        symbol: 'RELIANCE',
+        symbol: 'RELIANCE.NS',
         name: 'Reliance Industries Ltd',
         currentPrice: 2456.75,
         change: 23.45,
@@ -38,7 +65,7 @@ class _VirtualTradingScreenState extends State<VirtualTradingScreen>
         sector: 'Energy',
       ),
       Stock(
-        symbol: 'TCS',
+        symbol: 'TCS.NS',
         name: 'Tata Consultancy Services',
         currentPrice: 3789.20,
         change: -45.30,
@@ -48,7 +75,7 @@ class _VirtualTradingScreenState extends State<VirtualTradingScreen>
         sector: 'IT',
       ),
       Stock(
-        symbol: 'HDFCBANK',
+        symbol: 'HDFCBANK.NS',
         name: 'HDFC Bank Ltd',
         currentPrice: 1654.85,
         change: 12.75,
@@ -58,7 +85,7 @@ class _VirtualTradingScreenState extends State<VirtualTradingScreen>
         sector: 'Banking',
       ),
       Stock(
-        symbol: 'INFY',
+        symbol: 'INFY.NS',
         name: 'Infosys Ltd',
         currentPrice: 1456.30,
         change: 18.90,
@@ -68,7 +95,7 @@ class _VirtualTradingScreenState extends State<VirtualTradingScreen>
         sector: 'IT',
       ),
       Stock(
-        symbol: 'ICICIBANK',
+        symbol: 'ICICIBANK.NS',
         name: 'ICICI Bank Ltd',
         currentPrice: 987.45,
         change: -8.25,
@@ -78,7 +105,7 @@ class _VirtualTradingScreenState extends State<VirtualTradingScreen>
         sector: 'Banking',
       ),
       Stock(
-        symbol: 'HINDUNILVR',
+        symbol: 'HINDUNILVR.NS',
         name: 'Hindustan Unilever Ltd',
         currentPrice: 2234.60,
         change: 34.80,
@@ -686,60 +713,66 @@ class _VirtualTradingScreenState extends State<VirtualTradingScreen>
     );
   }
 
-  void _executeTrade(String symbol, int quantity, double price, bool isBuy, AppStateProvider appState) {
-    final totalAmount = quantity * price;
-    
-    if (isBuy) {
-      if (appState.virtualBalance >= totalAmount) {
-        appState.updateVirtualBalance(appState.virtualBalance - totalAmount);
-        appState.addToPortfolio({
-          'symbol': symbol,
-          'quantity': quantity,
-          'buyPrice': price,
-          'currentPrice': price,
-        });
-        
+  Future<void> _executeTrade(String symbol, int quantity, double price, bool isBuy, AppStateProvider appState) async {
+    try {
+      // Execute trade through backend
+      final success = await appState.executeBackendTrade(symbol, quantity, isBuy);
+      
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Successfully bought $quantity shares of $symbol'),
+            content: Text('Successfully ${isBuy ? 'bought' : 'sold'} $quantity shares of $symbol'),
             backgroundColor: AppTheme.successColor,
           ),
         );
+        
+        // Refresh market data
+        await _loadMarketData();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Insufficient balance'),
+            content: Text('Trade execution failed'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
       }
-    } else {
-      // Sell logic would go here
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Sell functionality coming soon'),
-          backgroundColor: AppTheme.accentColor,
+          content: Text('Error: $e'),
+          backgroundColor: AppTheme.errorColor,
         ),
       );
     }
   }
 
-  void _addToWatchlist(Stock stock, AppStateProvider appState) {
-    final isInWatchlist = appState.watchlist.any((item) => item['symbol'] == stock.symbol);
-    
-    if (isInWatchlist) {
-      final index = appState.watchlist.indexWhere((item) => item['symbol'] == stock.symbol);
-      appState.removeFromWatchlist(index);
+  Future<void> _addToWatchlist(Stock stock, AppStateProvider appState) async {
+    try {
+      final isInWatchlist = appState.watchlist.any((item) => item['symbol'] == stock.symbol);
+      
+      if (isInWatchlist) {
+        // Remove from backend
+        final success = await appState.removeFromWatchlistBackend(stock.symbol);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${stock.symbol} removed from watchlist')),
+          );
+        }
+      } else {
+        // Add to backend
+        final success = await appState.addToWatchlistBackend(stock.symbol);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${stock.symbol} added to watchlist')),
+          );
+        }
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${stock.symbol} removed from watchlist')),
-      );
-    } else {
-      appState.addToWatchlist({
-        'symbol': stock.symbol,
-        'name': stock.name,
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${stock.symbol} added to watchlist')),
+        SnackBar(
+          content: Text('Error managing watchlist: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
       );
     }
   }
