@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import '../../providers/app_state_provider.dart';
 import '../../utils/app_theme.dart';
+import 'language_selection_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -292,7 +293,14 @@ class HomeScreen extends StatelessWidget {
                 'market_news'.tr(),
                 Icons.newspaper,
                 Colors.orange,
-                () => _navigateToTab(context, 4),
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LanguageSelectionScreen(),
+                    ),
+                  );
+                },
               ),
             ),
           ],
